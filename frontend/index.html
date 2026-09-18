@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ethereum Risk Analyzer</title>
+  <style>
+:root {
+  --bg: #0b0d10;
+  --panel: #12161c;
+  --panel-border: #1f2530;
+  --panel-border-soft: #1a1f28;
+  --text: #e7ebee;
+  --muted: #838d99;
+  --muted-dim: #596270;
+
+  --risk-low: #37c98f;
+  --risk-medium: #e0a940;
+  --risk-high: #e2574f;
+
+  --accent: #37c98f;
+  --accent-dim: rgba(55, 201, 143, 0.12);
+
+  --radius: 10px;
+  --radius-sm: 7px;
+
+  --font-body: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.stage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.panel {
+  width: 100%;
+  max-width: 440px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 28px;
+}
+
+.recap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--panel-border-soft);
+}
+
+.recap__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.recap__label {
+  font-size: 12px;
+  color: var(--muted-dim);
+}
+
+.recap__hash {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recap__edit {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--panel-border);
+  color: var(--muted);
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.recap__edit:hover {
+  border-color: var(--muted);
+  color: var(--text);
+}
+
+.query__label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.query__row {
+  display: flex;
+  gap: 8px;
+}
+
+.query__input {
+  flex: 1;
+  min-width: 0;
+  background: #0d1015;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.query__input::placeholder {
+  color: var(--muted-dim);
+}
+
+.query__input:focus {
+  border-color: var(--accent);
+}
+
+.query__input.is-invalid {
+  border-color: var(--risk-high);
+}
+
+.query__button {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #06130d;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0 20px;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.query__button:disabled {
+  background: var(--panel-border);
+  color: var(--muted-dim);
+  cursor: not-allowed;
+}
+
+.query__button:not(:disabled):hover {
+  opacity: 0.9;
+}
+
+.query__button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.query__hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--muted-dim);
+}
+
+.query__hint.is-invalid {
+  color: var(--risk-high);
+}
+
+.result {
+  margin-top: 4px;
+}
+
+.result__status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.result__meter {
+  display: flex;
+  gap: 3px;
+}
+
+.result__meter-seg {
+  width: 8px;
+  height: 22px;
+  border-radius: 2px;
+  background: var(--panel-border);
+}
+
+.result__meter.level-low .result__meter-seg:nth-child(1) {
+  background: var(--risk-low);
+}
+
+.result__meter.level-medium .result__meter-seg:nth-child(1),
+.result__meter.level-medium .result__meter-seg:nth-child(2) {
+  background: var(--risk-medium);
+}
+
+.result__meter.level-high .result__meter-seg {
+  background: var(--risk-high);
+}
+
+.result__level {
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.result__level.level-low {
+  color: var(--risk-low);
+}
+
+.result__level.level-medium {
+  color: var(--risk-medium);
+}
+
+.result__level.level-high {
+  color: var(--risk-high);
+}
+
+.result__explanation {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.details__toggle {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--panel-border);
+  text-underline-offset: 3px;
+}
+
+.details__toggle:hover {
+  color: var(--text);
+}
+
+.details {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--panel-border-soft);
+}
+
+.details__grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+  font-size: 13px;
+}
+
+.details__grid dt {
+  color: var(--muted-dim);
+}
+
+.details__grid dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  color: var(--text);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.details__rules-label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted-dim);
+  margin-bottom: 8px;
+}
+
+.details__rules-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.details__rules-list li {
+  font-size: 13px;
+  color: var(--muted);
+  padding-left: 14px;
+  position: relative;
+}
+
+.details__rules-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--muted-dim);
+}
+
+.details__rules-empty {
+  font-size: 13px;
+  color: var(--muted-dim);
+}
+
+.feedback {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.feedback--error {
+  background: rgba(226, 87, 79, 0.1);
+  border: 1px solid rgba(226, 87, 79, 0.35);
+  color: #f0a8a3;
+}
+
+.feedback__message {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <div class="panel" id="panel">
+
+      <div class="recap" id="recap" hidden>
+        <div class="recap__info">
+          <span class="recap__label">Transaction analyzed</span>
+          <code class="recap__hash" id="recap-hash"></code>
+        </div>
+        <button type="button" class="recap__edit" id="recap-edit">Analyze another</button>
+      </div>
+
+      <form id="analyze-form" class="query" novalidate>
+        <label for="tx-hash" class="query__label">Transaction hash</label>
+        <div class="query__row">
+          <input
+            id="tx-hash"
+            name="tx-hash"
+            type="text"
+            class="query__input"
+            placeholder="0x…"
+            autocomplete="off"
+            spellcheck="false"
+            aria-describedby="query-hint"
+          />
+          <button type="submit" id="analyze-btn" class="query__button" disabled>
+            <span id="analyze-btn-label">Analyze</span>
+          </button>
+        </div>
+        <p class="query__hint" id="query-hint">Paste an Ethereum hash: starts with 0x and is 66 characters long.</p>
+      </form>
+
+      <section class="result" id="result" hidden aria-live="polite">
+        <div class="result__status">
+          <div class="result__meter" id="result-meter" aria-hidden="true">
+            <span class="result__meter-seg"></span>
+            <span class="result__meter-seg"></span>
+            <span class="result__meter-seg"></span>
+          </div>
+          <span class="result__level" id="result-level">Low risk</span>
+        </div>
+
+        <p class="result__explanation" id="result-explanation"></p>
+
+        <button type="button" class="details__toggle" id="details-toggle" aria-expanded="false" aria-controls="details">
+          Show technical details
+        </button>
+
+        <div class="details" id="details" hidden>
+          <dl class="details__grid" id="details-grid"></dl>
+          <div class="details__rules">
+            <span class="details__rules-label">Rules evaluated</span>
+            <ul class="details__rules-list" id="details-rules-list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="feedback feedback--error" id="error" hidden role="alert">
+        <p class="feedback__message" id="error-message"></p>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+const API_BASE = "http://localhost:8000";
+
+const TX_HASH_REGEX = /^0x[a-fA-F0-9]{64}$/;
+
+const el = {
+  form: document.getElementById("analyze-form"),
+  input: document.getElementById("tx-hash"),
+  button: document.getElementById("analyze-btn"),
+  buttonLabel: document.getElementById("analyze-btn-label"),
+  hint: document.getElementById("query-hint"),
+
+  recap: document.getElementById("recap"),
+  recapHash: document.getElementById("recap-hash"),
+  recapEdit: document.getElementById("recap-edit"),
+
+  result: document.getElementById("result"),
+  meter: document.getElementById("result-meter"),
+  level: document.getElementById("result-level"),
+  explanation: document.getElementById("result-explanation"),
+
+  detailsToggle: document.getElementById("details-toggle"),
+  details: document.getElementById("details"),
+  detailsGrid: document.getElementById("details-grid"),
+  rulesList: document.getElementById("details-rules-list"),
+
+  error: document.getElementById("error"),
+  errorMessage: document.getElementById("error-message"),
+};
+
+const RISK_COPY = {
+  low: "Low risk",
+  medium: "Medium risk",
+  high: "High risk",
+};
+
+el.input.addEventListener("input", () => {
+  const value = el.input.value.trim();
+  const isValid = TX_HASH_REGEX.test(value);
+  const isEmpty = value.length === 0;
+
+  el.button.disabled = !isValid;
+  el.input.classList.toggle("is-invalid", !isValid && !isEmpty);
+  el.hint.classList.toggle("is-invalid", !isValid && !isEmpty);
+  el.hint.textContent = !isValid && !isEmpty
+    ? "That doesn't look like a valid hash."
+    : "Paste an Ethereum hash: starts with 0x and is 66 characters long.";
+});
+
+el.form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const hash = el.input.value.trim();
+  if (!TX_HASH_REGEX.test(hash)) return;
+
+  setLoading(true);
+  hideError();
+
+  try {
+    const response = await fetch(`${API_BASE}/analyze/${hash}`, {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      showError(response.status);
+      setLoading(false);
+      return;
+    }
+
+    const data = await response.json();
+    showResult(hash, data);
+  } catch (err) {
+    showError(null);
+  } finally {
+    setLoading(false);
+  }
+});
+
+el.recapEdit.addEventListener("click", () => {
+  el.recap.hidden = true;
+  el.result.hidden = true;
+  el.details.hidden = true;
+  el.detailsToggle.setAttribute("aria-expanded", "false");
+  el.form.hidden = false;
+  el.input.focus();
+});
+
+el.detailsToggle.addEventListener("click", () => {
+  const isOpen = !el.details.hidden;
+  el.details.hidden = isOpen;
+  el.detailsToggle.setAttribute("aria-expanded", String(!isOpen));
+  el.detailsToggle.textContent = isOpen ? "Show technical details" : "Hide technical details";
+});
+
+function setLoading(isLoading) {
+  el.button.disabled = isLoading || !TX_HASH_REGEX.test(el.input.value.trim());
+  el.input.disabled = isLoading;
+  el.buttonLabel.textContent = isLoading ? "Analyzing…" : "Analyze";
+}
+
+function showResult(hash, data) {
+  const level = data.risk_level in RISK_COPY ? data.risk_level : "medium";
+
+  el.recap.hidden = false;
+  el.recapHash.textContent = hash;
+  el.form.hidden = true;
+
+  el.meter.className = `result__meter level-${level}`;
+  el.level.className = `result__level level-${level}`;
+  el.level.textContent = RISK_COPY[level];
+  el.explanation.textContent = data.explanation || "";
+
+  renderDetails(data);
+
+  el.result.hidden = false;
+  el.details.hidden = true;
+  el.detailsToggle.setAttribute("aria-expanded", "false");
+  el.detailsToggle.textContent = "Show technical details";
+}
+
+function renderDetails(data) {
+  const tx = data.transaction || {};
+
+  const rows = [
+    ["From", tx.from],
+    ["To", tx.to],
+    ["Value", tx.value_eth != null ? `${tx.value_eth} ETH` : null],
+    ["Type", tx.is_contract_call ? "Contract interaction" : "Simple transfer"],
+    ["Recipient is a contract", tx.to_is_contract ? "Yes" : "No"],
+    ["Status", tx.status === 1 ? "Success" : "Failed"],
+    ["Block", tx.block_number],
+    ["Gas used", tx.gas_used],
+    ["Gas price", tx.gas_price_gwei != null ? `${tx.gas_price_gwei} gwei` : null],
+  ];
+
+  el.detailsGrid.innerHTML = "";
+  rows.forEach(([label, value]) => {
+    if (value === null || value === undefined) return;
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    dd.title = String(value);
+    el.detailsGrid.append(dt, dd);
+  });
+
+  el.rulesList.innerHTML = "";
+  const triggered = data.triggered_rules || [];
+  if (triggered.length === 0) {
+    const li = document.createElement("li");
+    li.className = "details__rules-empty";
+    li.textContent = "No rule was triggered.";
+    el.rulesList.append(li);
+  } else {
+    triggered.forEach((rule) => {
+      const li = document.createElement("li");
+      li.textContent = `${rule.rule} — ${rule.reason}`;
+      el.rulesList.append(li);
+    });
+  }
+}
+
+function showError(status) {
+  let message;
+  if (status === 404) {
+    message = "We couldn't find this transaction on the network.";
+  } else if (status === 502) {
+    message = "We couldn't reach the network provider. Please try again.";
+  } else {
+    message = "Something went wrong while analyzing this transaction. Please try again.";
+  }
+  el.errorMessage.textContent = message;
+  el.error.hidden = false;
+}
+
+function hideError() {
+  el.error.hidden = true;
+}
+  </script>
+</body>
+</html>
