@@ -63,6 +63,8 @@ body {
   padding: 28px;
 }
 
+/* ---------- Recap (post-analysis compact bar) ---------- */
+
 .recap {
   display: flex;
   align-items: center;
@@ -110,6 +112,8 @@ body {
   border-color: var(--muted);
   color: var(--text);
 }
+
+/* ---------- Query form ---------- */
 
 .query__label {
   display: block;
@@ -185,6 +189,8 @@ body {
 .query__hint.is-invalid {
   color: var(--risk-high);
 }
+
+/* ---------- Result ---------- */
 
 .result {
   margin-top: 4px;
@@ -291,6 +297,15 @@ body {
   white-space: nowrap;
 }
 
+.details__grid dd a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.details__grid dd a:hover {
+  text-decoration: underline;
+}
+
 .details__rules-label {
   display: block;
   font-size: 12px;
@@ -330,6 +345,8 @@ body {
   color: var(--muted-dim);
 }
 
+/* ---------- Feedback (error) ---------- */
+
 .feedback {
   margin-top: 16px;
   padding: 12px 14px;
@@ -358,6 +375,7 @@ body {
   <main class="stage">
     <div class="panel" id="panel">
 
+      <!-- Compact summary shown after analyzing -->
       <div class="recap" id="recap" hidden>
         <div class="recap__info">
           <span class="recap__label">Transaction analyzed</span>
@@ -366,6 +384,7 @@ body {
         <button type="button" class="recap__edit" id="recap-edit">Analyze another</button>
       </div>
 
+      <!-- Input form -->
       <form id="analyze-form" class="query" novalidate>
         <label for="tx-hash" class="query__label">Transaction hash</label>
         <div class="query__row">
@@ -386,6 +405,7 @@ body {
         <p class="query__hint" id="query-hint">Paste an Ethereum hash: starts with 0x and is 66 characters long.</p>
       </form>
 
+      <!-- Analysis result -->
       <section class="result" id="result" hidden aria-live="polite">
         <div class="result__status">
           <div class="result__meter" id="result-meter" aria-hidden="true">
@@ -411,6 +431,7 @@ body {
         </div>
       </section>
 
+      <!-- Error state -->
       <div class="feedback feedback--error" id="error" hidden role="alert">
         <p class="feedback__message" id="error-message"></p>
       </div>
@@ -419,6 +440,7 @@ body {
   </main>
 
   <script>
+// Point this to wherever your API runs (FastAPI / Risk Monitoring Engine)
 const API_BASE = "http://localhost:8000";
 
 const TX_HASH_REGEX = /^0x[a-fA-F0-9]{64}$/;
@@ -454,6 +476,8 @@ const RISK_COPY = {
   high: "High risk",
 };
 
+// --- Input validation: removes friction before anything is submitted ---
+
 el.input.addEventListener("input", () => {
   const value = el.input.value.trim();
   const isValid = TX_HASH_REGEX.test(value);
@@ -466,6 +490,8 @@ el.input.addEventListener("input", () => {
     ? "That doesn't look like a valid hash."
     : "Paste an Ethereum hash: starts with 0x and is 66 characters long.";
 });
+
+// --- Submit ---
 
 el.form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -511,6 +537,8 @@ el.detailsToggle.addEventListener("click", () => {
   el.detailsToggle.textContent = isOpen ? "Show technical details" : "Hide technical details";
 });
 
+// --- UI states ---
+
 function setLoading(isLoading) {
   el.button.disabled = isLoading || !TX_HASH_REGEX.test(el.input.value.trim());
   el.input.disabled = isLoading;
@@ -540,26 +568,35 @@ function showResult(hash, data) {
 function renderDetails(data) {
   const tx = data.transaction || {};
 
+  const etherscanLink = tx.tx_hash
+    ? `<a href="https://etherscan.io/tx/${tx.tx_hash}" target="_blank" rel="noopener">${tx.tx_hash}</a>`
+    : null;
+
   const rows = [
-    ["From", tx.from],
-    ["To", tx.to],
-    ["Value", tx.value_eth != null ? `${tx.value_eth} ETH` : null],
-    ["Type", tx.is_contract_call ? "Contract interaction" : "Simple transfer"],
-    ["Recipient is a contract", tx.to_is_contract ? "Yes" : "No"],
-    ["Status", tx.status === 1 ? "Success" : "Failed"],
-    ["Block", tx.block_number],
-    ["Gas used", tx.gas_used],
-    ["Gas price", tx.gas_price_gwei != null ? `${tx.gas_price_gwei} gwei` : null],
+    ["Tx hash", etherscanLink, true],
+    ["From", tx.from, false],
+    ["To", tx.to, false],
+    ["Value", tx.value_eth != null ? `${tx.value_eth} ETH` : null, false],
+    ["Type", tx.is_contract_call ? "Contract interaction" : "Simple transfer", false],
+    ["Recipient is a contract", tx.to_is_contract ? "Yes" : "No", false],
+    ["Status", tx.status === 1 ? "Success" : "Failed", false],
+    ["Block", tx.block_number, false],
+    ["Gas used", tx.gas_used, false],
+    ["Gas price", tx.gas_price_gwei != null ? `${tx.gas_price_gwei} gwei` : null, false],
   ];
 
   el.detailsGrid.innerHTML = "";
-  rows.forEach(([label, value]) => {
+  rows.forEach(([label, value, isHtml]) => {
     if (value === null || value === undefined) return;
     const dt = document.createElement("dt");
     dt.textContent = label;
     const dd = document.createElement("dd");
-    dd.textContent = value;
-    dd.title = String(value);
+    if (isHtml) {
+      dd.innerHTML = value;
+    } else {
+      dd.textContent = value;
+      dd.title = String(value);
+    }
     el.detailsGrid.append(dt, dd);
   });
 
