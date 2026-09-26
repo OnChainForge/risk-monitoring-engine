@@ -4,8 +4,10 @@ A configurable rule engine for real-time Ethereum transaction risk monitoring an
 
 ![Risk Monitoring Engine screenshot](docs/screenshot.png)
 
-**Live demo:** _pending deployment_
-**Video walkthrough:** _pending_
+📹 [Watch demo video](https://youtu.be/KVdkqj9M1R0)
+
+**Live demo:** https://risk-monitoring-engine-1.onrender.com  
+**Backend API:** https://risk-monitoring-engine.onrender.com/docs
 
 ## Problem
 
